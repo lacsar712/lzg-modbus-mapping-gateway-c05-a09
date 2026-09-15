@@ -192,4 +192,35 @@ type HealthStatus struct {
 	DeviceCount     int    `json:"deviceCount"`
 	LastModbusError string `json:"lastModbusError,omitempty"`
 	LastErrorAt     string `json:"lastErrorAt,omitempty"`
+	// ProbeSummary aggregates the latest on-demand connectivity probe per
+	// device (diagnostics page); empty until a probe has run.
+	ProbeSummary []ProbeSummary `json:"probeSummary,omitempty"`
+}
+
+// ProbeResult is one connectivity probe attempt against a device.
+type ProbeResult struct {
+	DeviceID  string  `json:"deviceId"`
+	Endpoint  string  `json:"endpoint"`
+	OK        bool    `json:"ok"`
+	LatencyMs float64 `json:"latencyMs"`
+	Error     string  `json:"error,omitempty"`
+	CheckedAt string  `json:"checkedAt"`
+}
+
+// ProbeSummary is the latest probe per device, used in health aggregation.
+type ProbeSummary struct {
+	DeviceID  string  `json:"deviceId"`
+	Endpoint  string  `json:"endpoint"`
+	OK        bool    `json:"ok"`
+	LatencyMs float64 `json:"latencyMs"`
+	Error     string  `json:"error,omitempty"`
+	CheckedAt string  `json:"checkedAt"`
+}
+
+// FaultStatus describes the dev-only fault injection switch.
+type FaultStatus struct {
+	// Supported is false unless the process started with DEV_FAULT_INJECTION=1.
+	Supported bool   `json:"supported"`
+	Enabled   bool   `json:"enabled"`
+	Target    string `json:"target,omitempty"`
 }

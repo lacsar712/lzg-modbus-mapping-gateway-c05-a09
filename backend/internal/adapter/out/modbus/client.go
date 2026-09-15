@@ -95,6 +95,17 @@ func (c *Client) transact(endpoint string, unitID byte, timeoutMs int, pdu []byt
 	return body, nil
 }
 
+// Ping dials the device and performs one FC03 read (address 0, qty 1) to verify
+// both TCP reachability and that the peer speaks Modbus. Returns round-trip time.
+func (c *Client) Ping(endpoint string, unitID byte, timeoutMs int) (time.Duration, error) {
+	start := time.Now()
+	_, err := c.ReadHoldingRegisters(endpoint, unitID, timeoutMs, 0, 1)
+	if err != nil {
+		return time.Since(start), err
+	}
+	return time.Since(start), nil
+}
+
 func (c *Client) ReadHoldingRegisters(endpoint string, unitID byte, timeoutMs int, address, quantity uint16) ([]uint16, error) {
 	pdu := []byte{
 		0x03,

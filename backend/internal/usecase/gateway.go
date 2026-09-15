@@ -12,12 +12,17 @@ import (
 type GatewayService struct {
 	store  port.MappingStore
 	modbus port.ModbusClient
+	fault  FaultController
 
 	mu              sync.RWMutex
 	cfg             domain.MappingConfig
 	yamlText        string
 	lastModbusError string
 	lastErrorAt     time.Time
+
+	probesMu     sync.Mutex
+	lastProbe    map[string]domain.ProbeResult
+	recentProbes []domain.ProbeResult
 }
 
 func NewGatewayService(store port.MappingStore, modbus port.ModbusClient) (*GatewayService, error) {
@@ -99,6 +104,16 @@ func (s *GatewayService) Health() domain.HealthStatus {
 	if s.lastModbusError != "" {
 		st.LastModbusError = s.lastModbusError
 		st.LastErrorAt = s.lastErrorAt.Format(time.RFC3339)
+	}
+	s.probesMu.Lock()
+	st.ProbeSummary = s.probeSummaryLocked()
+	s.probesMu.Unlock()
+	// Overall health degrades if the most recent probe of any device failed.
+	for _, p := range st.ProbeSummary {
+		if !p.OK {
+			st.Status = "degraded"
+			break
+		}
 	}
 	return st
 }

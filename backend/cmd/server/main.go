@@ -3,10 +3,13 @@ package main
 import (
 	"log"
 	"os"
+	"strings"
 
 	"github.com/bytecode/modbus-mapping-gateway/internal/adapter/in/httpapi"
+	"github.com/bytecode/modbus-mapping-gateway/internal/adapter/out/faultinject"
 	"github.com/bytecode/modbus-mapping-gateway/internal/adapter/out/modbus"
 	"github.com/bytecode/modbus-mapping-gateway/internal/adapter/out/yamlstore"
+	"github.com/bytecode/modbus-mapping-gateway/internal/port"
 	"github.com/bytecode/modbus-mapping-gateway/internal/usecase"
 )
 
@@ -23,11 +26,21 @@ func main() {
 	}
 
 	store := yamlstore.New(mappingFile)
-	client := modbus.NewClient()
-	svc, err := usecase.NewGatewayService(store, client)
+	rawClient := modbus.NewClient()
+
+	// DEV-ONLY fault injection (simulated device disconnect). Disabled unless
+	// DEV_FAULT_INJECTION is explicitly truthy; never set it in production.
+	faultClient := faultinject.New(rawClient, truthy(os.Getenv("DEV_FAULT_INJECTION")))
+	if faultClient.Supported() {
+		log.Printf("WARNING: dev-only fault injection ENABLED (DEV_FAULT_INJECTION=1)")
+	}
+
+	var mbClient port.ModbusClient = faultClient
+	svc, err := usecase.NewGatewayService(store, mbClient)
 	if err != nil {
 		log.Fatalf("load mapping: %v", err)
 	}
+	svc.SetFaultController(faultClient)
 
 	srv := httpapi.NewServer(svc)
 	log.Printf("modbus mapping gateway listening on %s, mapping=%s", addr, mappingFile)
@@ -41,4 +54,12 @@ func env(k, def string) string {
 		return v
 	}
 	return def
+}
+
+func truthy(v string) bool {
+	switch strings.ToLower(strings.TrimSpace(v)) {
+	case "1", "true", "yes", "on":
+		return true
+	}
+	return false
 }

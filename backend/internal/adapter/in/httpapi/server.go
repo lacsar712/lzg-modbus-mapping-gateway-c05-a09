@@ -40,8 +40,12 @@ func (s *Server) Router() *gin.Engine {
 		auth.GET("/devices/:id/points/:name", s.getPoint)
 		auth.PUT("/devices/:id/points/:name", s.writePoint)
 		auth.GET("/devices/:id/snapshot", s.snapshot)
+		auth.POST("/devices/:id/probe", s.probeDevice)
 		auth.GET("/mapping", s.getMapping)
 		auth.POST("/reload", s.reload)
+		auth.GET("/diagnostics/probes", s.listProbes)
+		auth.GET("/diagnostics/fault", s.getFault)
+		auth.POST("/diagnostics/fault", s.setFault)
 	}
 	return r
 }
